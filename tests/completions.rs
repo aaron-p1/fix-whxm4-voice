@@ -1,7 +1,8 @@
 //! The completion scripts, driven through real bash, zsh and fish.
 //!
 //! Needs bash with programmable completion (bashInteractive), zsh and fish on the PATH, as the dev
-//! shell provides them. The Nix build skips these tests.
+//! shell provides them. The Nix build skips these tests. On Windows, bash is Git for Windows' bash,
+//! as `generate` finds it, and the zsh and fish tests are ignored.
 
 mod common;
 
@@ -10,6 +11,7 @@ use std::path::Path;
 use std::process::{Command, Output};
 
 use common::TempDir;
+use fix_whxm4_voice::generate::bash;
 
 const BIN: &str = env!("CARGO_BIN_EXE_fix-whxm4-voice");
 
@@ -181,16 +183,18 @@ fn bash_completes_by_the_rules() {
     let tmp = TempDir::new();
     let script = script("bash", tmp.path());
     let work = workdir(&tmp);
-    let probe = Command::new("bash")
+    let bash = bash().unwrap();
+    let probe = Command::new(&bash)
         .args(["-c", "type compgen"])
         .output()
         .unwrap();
     assert!(
         probe.status.success(),
-        "the bash on the PATH has no programmable completion; use bashInteractive"
+        "{} has no programmable completion; use bashInteractive",
+        bash.display()
     );
     check("bash", |line| {
-        let out = Command::new("bash")
+        let out = Command::new(&bash)
             .args(["-c", BASH_DRIVER, "bash"])
             .arg(&script)
             .arg(line)
@@ -223,6 +227,7 @@ done
 "#;
 
 #[test]
+#[cfg_attr(windows, ignore = "needs zsh, which Windows has not")]
 fn zsh_completes_by_the_rules() {
     let tmp = TempDir::new();
     let script = script("zsh", tmp.path());
@@ -240,6 +245,7 @@ fn zsh_completes_by_the_rules() {
 }
 
 #[test]
+#[cfg_attr(windows, ignore = "needs fish, which Windows has not")]
 fn fish_completes_by_the_rules() {
     let tmp = TempDir::new();
     let script = script("fish", tmp.path());

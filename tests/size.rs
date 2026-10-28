@@ -25,6 +25,11 @@ fn replace(name: &str) -> Change {
     Change::Replace(name.to_string())
 }
 
+/// `name` in the workspace folder `dir`, as the report writes it: with the OS's path separator.
+fn in_dir(dir: &str, name: &str) -> String {
+    PathBuf::from(dir).join(name).display().to_string()
+}
+
 /// Every slot keeps its original, except for `changes`, given as (slot, change, converted size).
 fn built(changes: &[(usize, Change, usize)]) -> (Vec<Change>, Vec<Vec<u8>>) {
     let mut resolved = vec![Change::Original; SLOT_COUNT];
@@ -66,14 +71,20 @@ fn the_report_lists_every_clip_the_total_and_the_limit() {
 
     for slot in 3..SLOT_COUNT {
         assert!(
-            report.contains(&format!("1920  original/{}", clip_file_name(slot))),
+            report.contains(&format!(
+                "1920  {}",
+                in_dir("original", &clip_file_name(slot))
+            )),
             "{report}"
         );
     }
-    assert!(report.contains("16000  changes/00-song.wav"), "{report}");
+    assert!(
+        report.contains(&format!("16000  {}", in_dir("changes", "00-song.wav"))),
+        "{report}"
+    );
     assert!(report.contains("100  silence"), "{report}");
     assert!(
-        report.contains("1440  original/01-power-off.mp3"),
+        report.contains(&format!("1440  {}", in_dir("original", "01-power-off.mp3"))),
         "{report}"
     );
     let total = 16_000 + 100 + 1440 + 51 * 1920;
@@ -99,9 +110,12 @@ fn changed_clips_are_marked() {
             .unwrap()
             .to_string()
     };
-    assert!(line("changes/00-song.wav").contains('*'), "{report}");
     assert!(
-        !line("original/02-bluetooth-pairing.mp3").contains('*'),
+        line(&in_dir("changes", "00-song.wav")).contains('*'),
+        "{report}"
+    );
+    assert!(
+        !line(&in_dir("original", "02-bluetooth-pairing.mp3")).contains('*'),
         "{report}"
     );
 }

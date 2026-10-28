@@ -31,6 +31,16 @@ On macOS instead (see [ADR 0006](docs/adr/0006-macos-through-an-iobluetooth-help
 - build with `cargo build --release` and run `target/release/fix-whxm4-voice` in place of the `nix shell` step
 - the first command that talks to the headphones makes macOS ask for Bluetooth access for `xm4-rfcomm`
 
+On Windows instead (see [ADR 0007](docs/adr/0007-reach-the-headphones-through-winsock-on-windows.md)):
+
+- a Rust toolchain from [rustup](https://rustup.rs): the MSVC one, which needs the Visual Studio C++ build
+  tools it points you to
+- `ffmpeg` on the `PATH` (e.g. `winget install Gyan.FFmpeg` or `choco install ffmpeg`)
+- [Git for Windows](https://gitforwindows.org): its bash runs the sound scripts of `generate`
+- the headphones paired and connected in Settings > Bluetooth & devices
+- build and install with `cargo install --git https://github.com/aaron-p1/fix-whxm4-voice` in place of the
+  `nix shell` step, and run `fix-whxm4-voice` from PowerShell or cmd
+
 ### Steps
 
 Get the tool with:

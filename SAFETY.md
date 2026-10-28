@@ -3,10 +3,10 @@
 This page explains what `upload` does to your WH-1000XM4, what state the headphones are left in if
 something goes wrong, and how to get them back to normal. Read it before your first upload.
 
-**Status (2026-10-10):** one upload has succeeded on real headphones, while they were also connected
-to a phone. None of the failures below has been tried on real headphones. What this page says about
-them comes from how the Sony app does the same job and from tests against simulated headphones. Where something is
-not known, this page says so.
+**Status (2026-10-28):** two uploads have succeeded on real headphones: one from Linux, while they
+were also connected to a phone, and one from Windows (ADR 0007). None of the failures below has been
+tried on real headphones. What this page says about them comes from how the Sony app does the same
+job and from tests against simulated headphones. Where something is not known, this page says so.
 
 ## Short answer
 

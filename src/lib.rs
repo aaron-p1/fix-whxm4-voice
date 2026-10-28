@@ -4,6 +4,12 @@ pub mod bluetooth;
 #[cfg(target_os = "macos")]
 #[path = "bluetooth_macos.rs"]
 pub mod bluetooth;
+#[cfg(windows)]
+#[path = "bluetooth_windows.rs"]
+pub mod bluetooth;
+#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+#[path = "bluetooth_unsupported.rs"]
+pub mod bluetooth;
 pub mod build;
 pub mod changes;
 pub mod completion;

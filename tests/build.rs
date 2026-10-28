@@ -330,10 +330,25 @@ fn a_pack_in_a_language_build_never_writes_is_not_accepted_as_built() {
     assert!(err.contains("0xff"), "{err}");
 }
 
-/// Sets the modification time of `path` to `seconds` after an arbitrary fixed moment.
+/// Sets the modification time of `path`, a file or a directory, to `seconds` after an arbitrary
+/// fixed moment.
 fn modified(path: &Path, seconds: u64) {
     let time = SystemTime::UNIX_EPOCH + Duration::from_secs(1_700_000_000 + seconds);
-    fs::File::open(path).unwrap().set_modified(time).unwrap();
+    let mut options = fs::OpenOptions::new();
+    options.read(true);
+    // Unix sets the times of the owner's file through a read-only handle, and refuses to open a
+    // directory for writing. Windows wants the right to write attributes, and opens a directory only
+    // with FILE_FLAG_BACKUP_SEMANTICS.
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        const FILE_WRITE_ATTRIBUTES: u32 = 0x0100;
+        const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+        options
+            .access_mode(FILE_WRITE_ATTRIBUTES)
+            .custom_flags(FILE_FLAG_BACKUP_SEMANTICS);
+    }
+    options.open(path).unwrap().set_modified(time).unwrap();
 }
 
 /// A workspace with the change `00-mine.wav` and a German build of the originals alone, so that a

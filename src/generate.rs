@@ -3,7 +3,7 @@
 //!
 //! The scripts stay scripts so anyone can read and change them. The Nix package installs them next to
 //! the binary and points [`SCRIPT_ENV`] and [`BATTERY_SCRIPT_ENV`] at them; setting those variables
-//! runs other copies instead.
+//! runs other copies instead. On Windows they run with Git for Windows' bash (ADR 0007), see [`bash`].
 
 use std::collections::BTreeSet;
 use std::env;
@@ -20,8 +20,64 @@ use crate::workspace::Workspace;
 pub const SCRIPT_ENV: &str = "FIX_WHXM4_VOICE_GENERATE_SCRIPT";
 /// Environment variable naming the battery script to run.
 pub const BATTERY_SCRIPT_ENV: &str = "FIX_WHXM4_VOICE_BATTERY_SCRIPT";
+/// Environment variable naming the bash to run the scripts with.
+pub const BASH_ENV: &str = "FIX_WHXM4_VOICE_BASH";
 /// Folder in `build/` the scripts write into before their clips are moved into `changes/`.
 const STAGING: &str = "generated";
+
+/// The bash that runs the scripts: the one [`BASH_ENV`] names, or else `bash` on the PATH. On
+/// Windows, the `bash` on the PATH is usually WSL's, which cannot open the Windows paths it is
+/// handed, so there it is Git for Windows' bash instead, found through `git` on the PATH or in
+/// Git's default install folders. Its tools (awk, mktemp, ...) come with it.
+pub fn bash() -> io::Result<PathBuf> {
+    if let Some(bash) = env::var_os(BASH_ENV) {
+        return Ok(PathBuf::from(bash));
+    }
+    if cfg!(windows) {
+        git_bash()
+    } else {
+        Ok(PathBuf::from("bash"))
+    }
+}
+
+/// Git for Windows' bash: `bin\bash.exe` under Git's install folder, the launcher that puts Git's
+/// `usr\bin` tools on the PATH.
+fn git_bash() -> io::Result<PathBuf> {
+    // Git's install folder, from `git.exe` on the PATH: it lives in `cmd\`, `bin\` or `mingw64\bin\`.
+    let path = env::var_os("PATH").unwrap_or_default();
+    let mut roots: Vec<PathBuf> = env::split_paths(&path)
+        .filter(|dir| dir.join("git.exe").is_file())
+        .flat_map(|dir| {
+            let parent = dir.parent().map(Path::to_path_buf);
+            let grandparent = dir.parent().and_then(Path::parent).map(Path::to_path_buf);
+            [parent, grandparent]
+        })
+        .flatten()
+        .collect();
+    for (var, under) in [
+        ("ProgramFiles", "Git"),
+        ("ProgramFiles(x86)", "Git"),
+        ("LocalAppData", "Programs\\Git"),
+    ] {
+        if let Some(base) = env::var_os(var) {
+            roots.push(PathBuf::from(base).join(under));
+        }
+    }
+    roots
+        .iter()
+        .map(|root| root.join("bin").join("bash.exe"))
+        .find(|bash| bash.is_file())
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::NotFound,
+                format!(
+                    "Git for Windows was not found, and its bash is what runs the scripts\n\
+                     Install it from https://gitforwindows.org, or set {BASH_ENV} to a bash that opens \
+                     Windows paths and can run ffmpeg."
+                ),
+            )
+        })
+}
 
 /// A script `generate` runs as `bash <path> <staging folder> <args>...`.
 pub struct Script {
@@ -104,12 +160,13 @@ fn run(script: &Script, staging: &Path) -> io::Result<()> {
             format!("the script {} does not exist", path.display()),
         ));
     }
-    let output = Command::new("bash")
+    let bash = bash()?;
+    let output = Command::new(&bash)
         .arg(path)
         .arg(staging)
         .args(&script.args)
         .output()
-        .map_err(|e| io::Error::new(e.kind(), format!("cannot run bash: {e}")))?;
+        .map_err(|e| io::Error::new(e.kind(), format!("cannot run {}: {e}", bash.display())))?;
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(io::Error::other(format!(

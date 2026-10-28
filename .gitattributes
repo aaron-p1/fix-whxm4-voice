@@ -1,0 +1,2 @@
+# The sound scripts run under bash, which chokes on CRLF; keep them LF on Windows checkouts too.
+*.sh text eol=lf

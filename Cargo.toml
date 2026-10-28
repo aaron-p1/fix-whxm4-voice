@@ -19,3 +19,13 @@ ureq = "3.4.2"
 bluer = { version = "0.17", features = ["bluetoothd", "rfcomm"] }
 futures = "0.3"
 tokio = { version = "1", features = ["rt-multi-thread", "time", "io-util", "macros"] }
+
+# Bluetooth goes through Winsock on Windows (ADR 0007).
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Devices_Bluetooth",
+    "Win32_Foundation",
+    "Win32_Networking_WinSock",
+    # WSAQUERYSETW, the SDP query, points at a BLOB from here.
+    "Win32_System_Com",
+] }
